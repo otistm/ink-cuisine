@@ -36,8 +36,7 @@ function seat(p,ti){
   S.door=S.door.filter(id=>id!==p.id);T.pid=p.id;p.table=ti;
   p.dirtyAtSeat=S.tables.filter(t=>t.dirty).length;
   setStage(p,'read');p.readFor=2.5+Math.random()*2;
-  S.did.seat=true;snd('seat');haptic(10);drawDoor();
-  if(p.kind==='insp'&&!S.inspSeen){S.inspSeen=true}
+  S.did.seat=true;snd('seat');haptic(10);drawDoor();coach('seat');
 }
 function chooseDish(course){
   const opts=S.menu.map((d,m)=>({d,m})).filter(x=>x.d.c===course);
@@ -58,15 +57,15 @@ function takeOrder(p){
   const st=S.stations.length,cook=p.dishes.reduce((a,m)=>a+cookTime(S.menu[m],chef()),0);
   p.expect=cook/Math.min(st,p.dishes.length)+(S.kq.length-p.dishes.length)*2.2/st+3;
   setStage(p,'wait',(p.expect+22)*vibe().patience);
-  S.did.order=true;snd('order');
+  S.did.order=true;snd('order');coach('order');
 }
 function serve(p){
   const T=S.tables[p.table];
-  const waited=S.clock-p.readyAt;if(waited>hotFor())p.cold=1;
+  const waited=S.clock-p.readyAt;if(waited>hotFor()&&!S.tut)p.cold=1;
   p.w.food=S.clock-p.orderedAt-p.expect;
   S.pass=S.pass.filter(id=>id!==p.id);
-  setStage(p,'eat');p.eatFor=6*vibe().linger*(.8+p.size*.12);
-  S.did.serve=true;snd('serve');haptic(12);drawPass();
+  setStage(p,'eat');p.eatFor=S.tut?4:6*vibe().linger*(.8+p.size*.12);
+  S.did.serve=true;snd('serve');haptic(12);drawPass();coach('serve');
   const el=room.querySelector(`[data-t="${p.table}"]`);if(el&&p.cold)floatAt(el,'Cold!','small');
 }
 // The bill: how the evening went, out of 5 stars.
@@ -94,9 +93,9 @@ function payBill(p,late){
   S.till+=pay;S.earned+=pay;S.take+=pay;S.served++;S.covers+=p.size;S.starSum+=stars;
   S.buzz=clamp(S.buzz+(stars-3)*.8*(p.kind==='blog'?3:1),0,100);
   S.reviews.push({stars,name:p.name,kind:p.kind,d:dishes.length?pick(dishes).name:'',slow:v.svcPts<.6,cold:p.cold,pricey:v.ratio>1.2});
-  if(p.kind==='insp')recordInspection(v.insp);
+  if(p.kind==='insp'&&!S.tut)recordInspection(v.insp);
   leave(p);T.dirty=true;T.clearAt=S.up.porter?S.clock+3:Infinity;
-  S.did.bill=true;snd('coin');haptic([12,40,12]);
+  S.did.bill=true;snd('coin');haptic([12,40,12]);coach('bill');
   const el=room.querySelector(`[data-t="${p.table}"]`);
   if(el){const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height*.4;
     floatText('+'+money(pay),x,y);setTimeout(()=>floatText('★'.repeat(Math.floor(stars))+(stars%1?'½':''),x,y+22,'small'),250)}
@@ -120,7 +119,7 @@ function walkout(p){
   leave(p);drawDoor();drawPass();
 }
 function leave(p){p.stage='gone';S.roomDirty=true;if(p.table>=0){const T=S.tables[p.table];if(T.pid===p.id)T.pid=null}}
-function clearTable(ti){const T=S.tables[ti];T.dirty=false;T.clearAt=Infinity;S.did.clear=true;S.roomDirty=true;snd('clear')}
+function clearTable(ti){const T=S.tables[ti];T.dirty=false;T.clearAt=Infinity;S.did.clear=true;S.roomDirty=true;snd('clear');coach('clear')}
 
 /* ---------- the night, a frame at a time ---------- */
 function tickService(dt){
@@ -131,15 +130,15 @@ function tickService(dt){
   }
   for(const p of S.parties){
     if(p.stage==='gone')continue;
-    p.t+=dt;
-    if(p.stage==='door'){p.w.door+=dt;p.pat-=dt;if(p.pat<=0)walkout(p)}
+    p.t+=dt;const calm=!!S.tut; // the soft opening: nobody loses patience, and the front of house leaves it all to you
+    if(p.stage==='door'){p.w.door+=dt;if(!calm)p.pat-=dt;if(p.pat<=0)walkout(p)}
     else if(p.stage==='read'){if(p.t>=p.readFor)setStage(p,'order',18*vibe().patience)}
-    else if(p.stage==='order'){p.w.order+=dt;p.pat-=dt;
-      if(p.t>=autoOrder()){p.orderedAt=S.clock;takeOrder(p);S.auto++}else if(p.pat<=0)walkout(p)}
-    else if(p.stage==='wait'){p.pat-=dt;if(p.pat<=0)walkout(p)}
+    else if(p.stage==='order'){p.w.order+=dt;if(!calm)p.pat-=dt;
+      if(p.t>=autoOrder()&&!calm){p.orderedAt=S.clock;takeOrder(p);S.auto++}else if(p.pat<=0)walkout(p)}
+    else if(p.stage==='wait'){if(!calm)p.pat-=dt;if(p.pat<=0)walkout(p)}
     else if(p.stage==='eat'){if(p.t>=p.eatFor)setStage(p,'bill',16*vibe().patience)}
-    else if(p.stage==='bill'){p.w.bill+=dt;p.pat-=dt;
-      if(p.t>=autoBill()){payBill(p);S.auto++}else if(p.pat<=0)payBill(p,true)}
+    else if(p.stage==='bill'){p.w.bill+=dt;if(!calm)p.pat-=dt;
+      if(p.t>=autoBill()&&!calm){payBill(p);S.auto++}else if(p.pat<=0)payBill(p,true)}
   }
   // the kitchen
   for(const s of S.stations){
@@ -151,7 +150,7 @@ function tickService(dt){
       S.till-=d.cost;S.food+=d.cost;
       if(p&&!j.waste&&p.stage==='wait'){
         p.done++;p.q.push(quality(d,s.cook));
-        if(p.done>=p.dishes.length){p.readyAt=S.clock;S.pass.push(p.id);S.roomDirty=true;snd('bell');drawPass()}
+        if(p.done>=p.dishes.length){p.readyAt=S.clock;S.pass.push(p.id);S.roomDirty=true;snd('bell');drawPass();coach('cooked')}
       }
       hud();
     }
@@ -162,7 +161,7 @@ function tickService(dt){
   if(S.kitchenDirty){S.kitchenDirty=false;drawKitchen()}else kitchenBars();
   doorBars();passBars();clockHud();
   // after last orders, the night ends once everyone has gone
-  if(S.mode==='play'&&!S.arrivals.length&&S.clock>=SERVICE&&S.parties.every(p=>p.stage==='gone'))endService();
+  if(S.mode==='play'&&!S.tut&&!S.arrivals.length&&S.clock>=SERVICE&&S.parties.every(p=>p.stage==='gone'))endService();
 }
 
 /* ---------- drawing the door, the room, the pass and the kitchen ---------- */
@@ -181,6 +180,7 @@ function drawDoor(){
   door.innerHTML=`<span class="lab">At the door${more>0?` <em>+${more} more</em>`:''}</span><div class="guests">${[0,1,2].map(i=>doorHTML(party(ids[i]))).join('')}</div>`;
   door.querySelectorAll('.guest').forEach(el=>{const id=+el.dataset.pid;
     if(!S.seen.has(id)){S.seen.add(id);if(!RM)el.animate([{transform:'translateX(60px) rotate(var(--tilt))',opacity:0},{transform:'translateX(-5px) rotate(var(--tilt)) scaleX(.95)',opacity:1,offset:.7},{transform:'rotate(var(--tilt))'}],{duration:380,easing:'cubic-bezier(.3,.8,.4,1)'})}});
+  coachRedraw();
 }
 function doorBars(){
   door.querySelectorAll('.guest').forEach(el=>{const p=party(+el.dataset.pid);if(!p||p.stage!=='door')return;
@@ -209,6 +209,7 @@ function tableHTML(i){
 function drawRoom(){
   room.style.setProperty('--rows',Math.ceil(S.tables.length/2));
   room.innerHTML=S.tables.map((_,i)=>tableHTML(i)).join('');
+  coachRedraw();
 }
 function roomBars(){
   S.tables.forEach((T,i)=>{const p=T.pid&&party(T.pid);if(!p)return;const el=room.querySelector(`[data-t="${i}"]`);if(!el)return;
@@ -221,16 +222,17 @@ function drawPass(){
   passEl.innerHTML=`<span class="lab">The pass</span><div class="plates">${ids.length?ids.map(id=>{const p=party(id);return p?`<button class="order" data-pid="${id}" aria-label="Food for table ${p.table+1}">
     <b>T${p.table+1}</b><span class="dishes">${p.dishes.slice(0,5).map(m=>dishIcon(S.menu[m])).join('')}${p.dishes.length>5?`<em>+${p.dishes.length-5}</em>`:''}</span><div class="heat"><i></i></div></button>`:''}).join('')
     :'<span class="none">Nothing waiting. The kitchen rings a bell when food is up.</span>'}</div>`;
-  passBars();
+  passBars();coachRedraw();
 }
 function passBars(){
-  passEl.querySelectorAll('.order').forEach(el=>{const p=party(+el.dataset.pid);if(!p)return;const f=1-(S.clock-p.readyAt)/hotFor();
+  passEl.querySelectorAll('.order').forEach(el=>{const p=party(+el.dataset.pid);if(!p)return;const f=S.tut?1:1-(S.clock-p.readyAt)/hotFor();
     el.querySelector('.heat i').style.width=Math.max(0,f*100)+'%';el.classList.toggle('cold',f<=0)});
 }
 function drawKitchen(){
   kitchen.innerHTML=S.stations.map((s,i)=>`<div class="stn" data-s="${i}">${faceSVG(s.cook.look,s.job?'happy':'meh',i===0)}
     <div class="sjob">${s.job?dishIcon(S.menu[s.job.m]):'<span class="idle">Free</span>'}<div class="pbar"><i style="width:${s.job?s.t/s.dur*100:0}%"></i></div></div></div>`).join('')
     +`<div class="kq"><b>${S.kq.length}</b><span>to cook</span></div>`;
+  coachRedraw();
 }
 function kitchenBars(){kitchen.querySelectorAll('.stn').forEach(el=>{const s=S.stations[+el.dataset.s];if(s&&s.job)el.querySelector('.pbar i').style.width=Math.min(100,s.t/s.dur*100)+'%'})}
 
@@ -262,7 +264,7 @@ passEl.addEventListener('click',e=>{
 function clockText(t){const m=Math.min(t,SERVICE+90)/SERVICE*240,h=6+Math.floor(m/60),mm=Math.floor(m%60);return `${h>12?h-12:h}:${String(mm).padStart(2,'0')}pm`}
 function clockHud(){
   const f=Math.min(1,S.clock/SERVICE);$('#cfill').style.width=f*100+'%';
-  const txt=S.clock>=SERVICE?'Last orders':clockText(S.clock),el=$('#ctime');if(el.textContent!==txt)el.textContent=txt;
+  const txt=S.tut?'Soft opening':S.clock>=SERVICE?'Last orders':clockText(S.clock),el=$('#ctime');if(el.textContent!==txt)el.textContent=txt;
 }
 function hud(){$('#till').textContent=money(S.till);$('#rname').textContent=S.name}
 function floatAt(el,txt,cls=''){const r=el.getBoundingClientRect();floatText(txt,r.left+r.width/2,r.top+r.height*.4,cls)}

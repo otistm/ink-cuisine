@@ -1,8 +1,8 @@
 // Ink Cuisine service worker: always tries the network first so updates show up right away,
 // and falls back to the last copy it saw so the game still opens with a weak connection.
-const CACHE = 'inkcuisine-v1';
+const CACHE = 'inkcuisine-v2';
 const CORE = ['/', '/play/', '/play/styles.css', '/play/js/config.js', '/play/js/data.js', '/play/js/core.js', '/play/js/online.js', '/play/js/audio.js',
-  '/play/js/draw.js', '/play/js/service.js', '/play/js/menu.js', '/play/js/screens.js',
+  '/play/js/draw.js', '/play/js/service.js', '/play/js/menu.js', '/play/js/tutorial.js', '/play/js/screens.js',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });

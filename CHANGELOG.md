@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+- A soft opening: a calm friends-and-family night before week 1, with your new head chef as coach. They walk you through seating a party, taking the order, watching the kitchen, serving from the pass, taking the bill and clearing the table, one tip at a time. Then you run two tables on your own, one of them a guest with a notebook, so you know what the Quill Guide's inspector looks like.
+- Nothing can go wrong in it. Nobody loses patience, plates never go cold, and your front of house leaves everything to you so you learn each step. Nothing carries over either: your bank, buzz and menu are exactly as you left them.
+- Each tip has a ring that fills while you read, then turns into an x to close it, like Ink Gardens. Whatever the chef is talking about gets a dashed ring around it.
+- New players are offered the soft opening as soon as the menu is planned, with Skip to week 1 underneath. Everyone else can replay it from week 1's intro.
+- Doing things out of order never leaves you stuck: the chef just moves on.
+
 ## 0.1.0
 - First playable version. You open a restaurant on a busy street and have one season, eight Friday nights, to earn stars in the Quill Guide.
 - Set it up your way: name it (or roll a name), pick a cuisine (French, Italian, Japanese, Indian, Mexican or Nordic) and a vibe (candlelit, rustic farmhouse, sleek and modern, neon diner or garden terrace). Each vibe brings different guests: how many, how much they'll pay, how patient they are and how much they care about a show on the plate.

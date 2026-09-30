@@ -42,6 +42,7 @@ for (let n = 0; n < seasons; n++) {
     for (let i = 0; i < MENU_SLOTS.length; i++) { ui(`[data-act="ws"][data-i="${i}"]`); if (Math.random() < .4) ui('[data-act="push"]'); if (S.ws.cur.fail) ui('[data-act="another"]'); ui('[data-act="accept"]') }
     const setup = `${CUISINES[S.cuisine].k}/${VIBES[S.vibe].k}/${CHEFS[S.chef].short}/${SOUS[S.sous].short}/${FOH[S.foh].short}`;
     if (!ui('[data-act="opening"]')) return { log, setup, end: 'could not open: ' + S.mode };
+    ui('[data-act="skiptut"]');
     for (let guard = 0; guard < 30; guard++) {
       if (!ui('[data-act="start"]')) return { log, setup, end: 'no start button on ' + S.mode };
       while (S.mode === 'play') {

@@ -30,7 +30,8 @@ Otis is the designer. He doesn't read code. He judges changes by playing them on
 | draw.js | Ink SVG: faces (`faceSVG`, hair, toques, moods), dishes (`DISH`, `dishSVG`), the table glyphs (`GLYPH`), tables for each vibe (`tableSVG`), stars, the cloche |
 | service.js | Friday night: planning the night's guests (`planNight`), each party's evening (seat, order, serve, bill, walk out), how a guest rates the meal and how the inspector scores it (`verdict`), the kitchen, the door, the room, the pass, taps, the top bar, floating text, toasts |
 | menu.js | The menu board (prices, rework) and the workshop with the chef (`pitch`, push, something else, accept) |
-| screens.js | The season's flow (`newSeason`, `startService`, `endService`), week 1's hints, rivals and the city table, every screen (title, setup steps, week intro, last orders, the books, the office, hire and fit out, the city table, the Quill Guide, broke, pause), the main loop, `start()` |
+| tutorial.js | The soft opening: `TUT` steps, the chef's bubble (`bubble`, the reading ring and x), `coach(event)`, `tutParty`, `startTutorial`, `finishTutorial` |
+| screens.js | The season's flow (`newSeason`, `startService`, `endService`), week 1's hints, rivals and the city table, every screen (title, setup steps, the soft opening offer, week intro, last orders, the books, the office, hire and fit out, the city table, the Quill Guide, broke, pause), the main loop, `start()` |
 
 ## How it plays
 - **Setup** (six steps): name, cuisine, vibe, head chef, the team (sous chef and front of house), then the menu with the head chef. Changing the cuisine clears the menu.
@@ -45,18 +46,27 @@ Otis is the designer. He doesn't read code. He judges changes by playing them on
 - **The office**: rework the menu with the chef's new ideas, hire and fit out (`UPGRADES`), and the city table.
 - Week 1 shows a one-line hint above the pass until the player has seated, taken an order, served, taken a bill and cleared once.
 
+## The soft opening (tutorial)
+- A friends-and-family night before week 1, with the player's head chef as coach. A new player (no `BEST.tutDone`) is offered it after planning the menu (Open the doors), with Skip to week 1. Everyone can replay it from the quiet Play the soft opening button on week 1's intro. Finishing or skipping sets `BEST.tutDone`.
+- It uses the normal service with no arrivals except scripted parties (`tutParty`). `S.tut` switches off the pressure: no patience loss, no walkouts, the front of house never takes orders or bills on its own, plates never go cold, eating is quick, and the inspector-looking guest isn't scored. The season is saved before it starts and restored exactly afterwards, so nothing carries over.
+- The game reports moments with `coach(event)`: `seat`, `order`, `cooked` (a party's whole order is on the pass), `serve`, `bill`, `clear`, plus `tick` a few times a second.
+- Each step in `TUT` has `when` (the event that shows it), `until` (the event that moves on, or `next`/`finish` for explanations closed with the x), `target` (what gets the dashed ring; a selector or a function returning one), `pos` (`top` or `bottom`), `show` (set-up as it appears) and `ready` (true once the step is done anyway, so doing things out of order never leaves it stuck).
+- The bubble is Ink Gardens' (and Ink Crossing's): a reading ring fills for 2.6 to 7 seconds, then turns into an x. It lets taps through; only its buttons are tappable. Don't add Next or Got it buttons. Pausing hides it; resuming brings the same tip back without re-running its `show`.
+- If you rename an element a step targets, or change when one of those events fires, update `TUT` and run `npm run tutorial`.
+
 ## Every change
 1. Work on a new branch, never directly on `main`.
 2. Bump `VERSION` in `play/js/config.js` (patch for fixes, minor for features) and add a line to `CHANGELOG.md` in plain language.
 3. Test:
    - `npm run check`: all scripts parse.
    - `npm run season`: a bot sets up a random restaurant and plays whole seasons at phone size with the clock run fast, and fails on any error. `npm run season -- 5 human 1.1` plays at a person's pace (one tap every 1.1 s); use it after any balance change. At 0.8 s the bot usually finishes with one or two stars; three stars should be rare and earned.
+   - `npm run tutorial`: a bot sets up a restaurant as a new player and plays the soft opening start to finish, and fails if it gets stuck or anything carries over. `npm run tutorial -- shots` saves a screenshot of every tip in `screenshots/`.
    - Then run `python3 -m http.server` in the repo folder and open http://localhost:8000/play/ at a phone size (390 × 844). Online features only work over https, so locally feedback may say it isn't connected. That's expected.
 4. Push the branch and share the Vercel preview link with Otis. Merge to `main` only when he's happy.
 
 ## Protect players' saved progress
 Progress is kept in the browser's localStorage. An update must never wipe or break it.
-- `inkcuisine`: `best` (`stars`, `week`, `rank`, `name`) and `muted`.
+- `inkcuisine`: `best` (`stars`, `week`, `rank`, `name`), `muted` and `tutDone` (finished or skipped the soft opening).
 - `inkcuisine-run`: the season in progress, saved at the start of each week (`v`, `week`, `name`, `cuisine`, `vibe`, `chef`, `sous`, `foh`, `menu`, `till`, `buzz`, `rivals`, `up`, `insp`, `scores`, `earned`, `news`, `ideas`). "Carry on" restarts that week.
 - Never rename or remove a saved field. Add new fields with defaults in `restore()`. If a field's meaning changes, bump `v` and convert old runs in `loadRun()`.
 - Never reorder `CUISINES`, `VIBES`, `CHEFS`, `SOUS`, `FOH` or `RIVALS`, or the dishes and twists inside a cuisine: saved runs refer to them by position. Add new ones at the end. Menu dishes keep their own stats, so changing a dish's numbers only affects newly pitched dishes. Never rename an `UPGRADES` key (`k`).
@@ -80,6 +90,7 @@ Progress is kept in the browser's localStorage. An update must never wipe or bre
 ## Smoke test before sharing a preview
 - The front page shows three cloches lifting in turn, and a Play button that opens the game.
 - The title shows the version and "Send feedback". A fresh player sees Open a restaurant; after starting a season, a refresh shows Carry on.
+- Soft opening: after planning the menu, a new player is offered it. The chef's tips appear one at a time with a filling ring that turns into an x, and the thing they're talking about gets a dashed ring. Play it through to week 1 and check the bank is unchanged. Pause, restart it and quit from the middle: the tip goes away.
 - Setup: roll a name, pick each cuisine, vibe, chef and team member (the chosen card gets a thick outline). Plan the menu: each empty slot opens the workshop; Something else and Push it further use ideas, and a flop reads as a flop. Open the doors is disabled until all six dishes are planned. Prices go up and down and the value word changes.
 - Week 1: the intro shows the news, buzz, rank and the how-to. Seat a party, take their order, watch the kitchen cook it, serve it from the pass (bell), let them eat, take the bill (money and stars float up), clear the table. The hint line walks through each step.
 - Let a party wait at the door: they get cross, then walk out "Off to" a rival. Leave plates on the pass: "Cold!".

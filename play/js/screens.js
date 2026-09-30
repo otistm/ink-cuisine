@@ -37,7 +37,7 @@ function startService(){
 function endService(){if(S.mode!=='play')return;S.mode='ending';snd('ding');setTimeout(lastOrders,700)}
 // Week 1's hints: one line naming the next useful thing to do, until you've done each once.
 function hints(){
-  if(S.week>0)return;let h='';
+  if(S.week>0||S.tut)return;let h='';
   const st=S.tables.map((_,i)=>tableState(i));
   if(!S.did.seat&&S.door.length&&freeTable()>=0)h='Guests at the door. Tap them to seat them.';
   else if(!S.did.order&&st.some(x=>x.k==='order'))h=`Table ${st.findIndex(x=>x.k==='order')+1} is ready to order. Tap it.`;
@@ -61,7 +61,7 @@ function bestLine(){
   return `Best: reached week ${B.week+1} (${esc(B.name)})`;
 }
 function titleScreen(){
-  S.mode='menu';const R=loadRun();
+  leaveTutorial();S.mode='menu';const R=loadRun();
   show(`<div class="logo">${clocheSVG(pick(Object.keys(DISH)),0)}</div>
     <h1>Ink Cuisine</h1>
     <p class="tag">Hire a chef. Plan a menu. Win a star.</p>
@@ -122,6 +122,7 @@ function introScreen(){
     <p class="story">${S.news.t}</p>
     <div class="stats"><div><b>${Math.round(S.buzz)}</b><span>buzz</span></div><div><b>${ord(r)}</b><span>in town</span></div><div><b>${money(S.till)}</b><span>in the bank</span></div></div>
     <button class="btn" data-act="start">Open the doors</button>
+    ${S.week===0?`<button class="btn quiet" data-act="tut">Play the soft opening</button>`:''}
     ${S.week===0?`<div class="howto"><h2>How to run the floor</h2>
       <p><b>Seat.</b> Guests wait at the door. Tap them (or a free table) to sit them down.</p>
       <p><b>Take orders.</b> When a table raises a hand, tap it. The kitchen starts cooking straight away.</p>
@@ -129,6 +130,14 @@ function introScreen(){
       <p><b>Get paid.</b> Tap a table that wants the bill, then tap it again to clear it.</p>
       <p>Your front of house helps out, but slowly. Keep people waiting and they walk out to a rival.</p>
       <p><b>The Quill Guide.</b> Its inspector eats here in secret three times this season. They dine alone and take notes. Stars come out after week ${WEEKS}.</p></div>`:''}`);
+}
+// A brand-new player is offered the soft opening once the menu is planned; everyone else can replay it from week 1's intro.
+function softScreen(){
+  S.mode='soft';const c=chef();
+  show(`<p class="kick">Before opening night</p><h1>Soft opening</h1>
+    <div class="chefline">${faceSVG(c.look,'happy',true)}<p>"Restaurants always have a practice night first. Friends and family, nobody in a hurry. I'll show you the ropes."</p></div>
+    <button class="btn" data-act="tut">Soft opening</button><p class="kick soft">A short, calm night with ${esc(c.short)} to learn how service works.</p>
+    <button class="btn quiet" data-act="skiptut">Skip to week 1</button>`);
 }
 function lastOrders(){
   S.mode='summary';
@@ -242,10 +251,10 @@ function guideScreen(){
   b.forEach((s,i)=>{if(i<stars){setTimeout(()=>snd('star'),400+i*450);if(!RM)s.animate([{transform:'scale(0) rotate(-90deg)'},{transform:'scale(1.3) rotate(10deg)',offset:.7},{transform:'none'}],{duration:500,delay:400+i*450,fill:'backwards',easing:'cubic-bezier(.3,.7,.3,1)'})}});
 }
 function pauseScreen(){
-  if(S.mode!=='play')return;S.mode='paused';
+  if(S.mode!=='play')return;S.mode='paused';hideCoach();
   show(`<h1>Paused</h1><p class="story">The kitchen holds its breath. The guests do too, for now.</p>
     <button class="btn" data-act="resume">Resume</button>
-    <button class="btn quiet" data-act="retry">Restart week ${S.week+1}</button>
+    <button class="btn quiet" data-act="retry">Restart ${S.tut?'the soft opening':'week '+(S.week+1)}</button>
     <button class="btn quiet" data-act="sound">Sound: ${S.muted?'off':'on'}</button>
     <button class="btn quiet" data-act="menu">Quit to the menu</button>
     <p class="ver">${feedbackLink()}</p>`);
@@ -269,7 +278,9 @@ scr.addEventListener('click',e=>{
   else if(a==='push')wsPush();
   else if(a==='another')wsAnother();
   else if(a==='wsback'){S.ws=null;menuScreen()}
-  else if(a==='opening'){S.setup=null;S.ideas=0;introScreen()}
+  else if(a==='opening'){S.setup=null;S.ideas=0;BEST.tutDone?introScreen():softScreen()}
+  else if(a==='tut')startTutorial();
+  else if(a==='skiptut'){BEST.tutDone=true;saveBest();introScreen()}
   else if(a==='start')startService();
   else if(a==='books')booksScreen();
   else if(a==='broke')brokeScreen();
@@ -280,8 +291,8 @@ scr.addEventListener('click',e=>{
   else if(a==='up')buy(b.dataset.k);
   else if(a==='city')cityScreen();
   else if(a==='nextweek'){S.week++;S.ideas=0;S.news=null;rivalsWeek();introScreen()}
-  else if(a==='retry'){restore(S.morning);startService()}
-  else if(a==='resume'){hide();S.mode='play';last=performance.now()}
+  else if(a==='retry'){if(S.tut){hideCoach();restore(S.morning);startTutorial()}else{restore(S.morning);startService()}}
+  else if(a==='resume'){hide();S.mode='play';last=performance.now();if(S.tut&&S.tut.on)showStep(true)}
   else if(a==='sound'){S.muted=!S.muted;BEST.muted=S.muted;saveBest();b.textContent='Sound: '+(S.muted?'off':'on')}
   else if(a==='menu')titleScreen();
   else if(a==='feedback')showFeedback();
@@ -291,7 +302,7 @@ scr.addEventListener('click',e=>{
 let last=performance.now(),hintT=0;
 function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
-  if(S.mode==='play'){S.clock+=dt;tickService(dt);if((hintT+=dt)>.4){hintT=0;hints()}}
+  if(S.mode==='play'){S.clock+=dt;tickService(dt);if((hintT+=dt)>.4){hintT=0;hints();coach('tick')}}
   requestAnimationFrame(loop);
 }
 function start(){
