@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ink Cuisine: gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#000;--paper:#fff}
+@media (prefers-color-scheme:dark){:root{--ink:#f4f4f4;--paper:#161616}}
+body{background:var(--paper);color:var(--ink);font:600 13px Figtree,sans-serif;margin:16px}
+h2{margin:18px 0 8px;font-size:15px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;text-align:center}
+.cell>svg{width:80px;height:80px;overflow:visible}.stars svg{width:30px;height:30px}
+.tb .cell{width:190px}.tb .cell>svg{width:180px;height:108px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--paper)"/><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--ink);stroke-width:2.6"/></pattern>
+  <pattern id="dots" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" style="fill:var(--paper)"/><circle cx="3" cy="3" r="1.15" style="fill:var(--ink)"/></pattern>
+  <pattern id="stripes" width="6" height="5" patternUnits="userSpaceOnUse"><rect width="6" height="5" style="fill:var(--paper)"/><line x1="0" y1="2.5" x2="6" y2="2.5" style="stroke:var(--ink);stroke-width:1.5"/></pattern>
+</defs></svg>
+<div id="out"></div>
+<script>const S={};const pick=a=>a[0];</script>
+<script src="../play/js/data.js"></script>
+<script src="../play/js/draw.js"></script>
+<script>
+// Every drawing in the game on one page. Open http://localhost:8000/tools/gallery.html after changing draw.js.
+const cell=(svg,label)=>`<div class="cell">${svg}<span>${label}</span></div>`;
+const sec=(t,cells,cls='')=>`<h2>${t}</h2><div class="row ${cls}">${cells.join('')}</div>`;
+document.getElementById('out').innerHTML=
+  sec('Dishes',Object.keys(DISH).map(k=>cell(dishSVG(k),k)))+
+  sec('Head chefs',CHEFS.map(c=>cell(faceSVG(c.look,'happy',true),c.short)))+
+  sec('Sous chefs and front of house',SOUS.concat(FOH,[LINE_COOK]).map(c=>cell(faceSVG(c.look),c.short)))+
+  sec('Hair',HAIRS.map(h=>cell(faceSVG({hair:h}),h)))+
+  sec('Moods and extras',[cell(faceSVG({hair:'crop'},'meh'),'meh'),cell(faceSVG({hair:'bob'},'grr'),'grr'),cell(faceSVG({hair:'long',glasses:1,earrings:1}),'glasses'),cell(faceSVG({hair:'flat',beard:1,mustache:1}),'beard')])+
+  sec('Tables',VIBES.flatMap(v=>[cell(tableSVG(v.k),v.name),cell(tableSVG(v.k,{faces:[{hair:'bun'},{hair:'curls',glasses:1},{hair:'cap'}],plates:1,eat:1}),'eating'),cell(tableSVG(v.k,{dirty:1}),'dirty')]),'tb')+
+  sec('Glyphs',Object.keys(GLYPH).map(k=>cell(GLYPH[k],k)))+
+  sec('Stars and cloche',[cell(starsHTML(2),'2 stars'),cell(clocheSVG('bird',0),'closed'),cell(clocheSVG('sushi',1),'lifted')]);
+</script></body></html>
