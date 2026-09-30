@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+- The chef's speech bubble has a clean little tail pointing at them again.
+- The cloche on the title screen has more room above the name.
+
 ## 0.2.0
 - A soft opening: a calm friends-and-family night before week 1, with your new head chef as coach. They walk you through seating a party, taking the order, watching the kitchen, serving from the pass, taking the bill and clearing the table, one tip at a time. Then you run two tables on your own, one of them a guest with a notebook, so you know what the Quill Guide's inspector looks like.
 - Nothing can go wrong in it. Nobody loses patience, plates never go cold, and your front of house leaves everything to you so you learn each step. Nothing carries over either: your bank, buzz and menu are exactly as you left them.
